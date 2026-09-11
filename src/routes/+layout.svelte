@@ -32,30 +32,58 @@
 		{ title: 'Home', url: '/', icon: HouseIcon },
 		{ title: 'Finance', url: '/finance', icon: WalletCardsIcon },
 		{ title: 'Reminders', url: '/reminders', icon: AlarmClockIcon },
-		{ title: 'Settings', url: '#settings', icon: SettingsIcon },
+		{ title: 'Settings', url: '/settings', icon: SettingsIcon },
 	];
 
 	function setThemeMode(value: ThemeMode) {
 		themeMode = value;
 		localStorage.setItem('smart-journal-theme', value);
+		window.dispatchEvent(new CustomEvent<ThemeMode>('smart-journal-theme-change', { detail: value }));
 	}
 
 	onMount(() => {
-		const storedTheme = localStorage.getItem('smart-journal-theme');
 		const media = window.matchMedia('(prefers-color-scheme: dark)');
 
-		if (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system') {
-			themeMode = storedTheme;
-		}
+		const isThemeMode = (value: string | null): value is ThemeMode =>
+			value === 'light' || value === 'dark' || value === 'system';
+
+		const syncStoredTheme = () => {
+			const storedTheme = localStorage.getItem('smart-journal-theme');
+
+			if (isThemeMode(storedTheme)) {
+				themeMode = storedTheme;
+			}
+		};
 
 		const syncSystemTheme = () => {
 			systemTheme = media.matches ? 'dark' : 'light';
 		};
 
+		const handleThemeChange = (event: Event) => {
+			const value = (event as CustomEvent<ThemeMode>).detail;
+
+			if (isThemeMode(value)) {
+				themeMode = value;
+			}
+		};
+
+		const handleStorage = (event: StorageEvent) => {
+			if (event.key === 'smart-journal-theme' && isThemeMode(event.newValue)) {
+				themeMode = event.newValue;
+			}
+		};
+
+		syncStoredTheme();
 		syncSystemTheme();
 		media.addEventListener('change', syncSystemTheme);
+		window.addEventListener('smart-journal-theme-change', handleThemeChange);
+		window.addEventListener('storage', handleStorage);
 
-		return () => media.removeEventListener('change', syncSystemTheme);
+		return () => {
+			media.removeEventListener('change', syncSystemTheme);
+			window.removeEventListener('smart-journal-theme-change', handleThemeChange);
+			window.removeEventListener('storage', handleStorage);
+		};
 	});
 </script>
 
