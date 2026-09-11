@@ -1,25 +1,17 @@
 <script lang="ts">
 	import AlarmClockIcon from "@lucide/svelte/icons/alarm-clock";
 	import ArrowUpIcon from "@lucide/svelte/icons/arrow-up";
-	import BadgeCheckIcon from "@lucide/svelte/icons/badge-check";
 	import CheckIcon from "@lucide/svelte/icons/check";
 	import CircleDollarSignIcon from "@lucide/svelte/icons/circle-dollar-sign";
-	import Edit3Icon from "@lucide/svelte/icons/edit-3";
 	import LoaderCircleIcon from "@lucide/svelte/icons/loader-circle";
 	import WalletCardsIcon from "@lucide/svelte/icons/wallet-cards";
 	import XIcon from "@lucide/svelte/icons/x";
 
+	import OmniboxResultPreview, {
+		type OmniboxPreview,
+	} from "$lib/components/omnibox/omnibox-result-preview.svelte";
 	import { Button } from "$lib/components/ui/button/index.js";
 	import { Textarea } from "$lib/components/ui/textarea/index.js";
-
-	type Preview = {
-		kind: string;
-		amount: string;
-		category: string;
-		reminder: string;
-		destination: string;
-		source: string;
-	};
 
 	type TimelineItem = {
 		time: string;
@@ -31,7 +23,7 @@
 
 	let entry = $state("");
 	let isProcessing = $state(false);
-	let preview = $state<Preview | null>(null);
+	let preview = $state<OmniboxPreview | null>(null);
 	let toast = $state("");
 	let todayLabel = new Intl.DateTimeFormat("id-ID", {
 		weekday: "long",
@@ -70,7 +62,7 @@
 		"Gaji masuk 5jt dari project",
 	];
 
-	function inferPreview(text: string): Preview {
+	function inferPreview(text: string): OmniboxPreview {
 		const lowerText = text.toLowerCase();
 		const hasReminder = /ingat|remind|alarm|besok|hari|jam|discord/.test(lowerText);
 		const hasIncome = /gaji|masuk|income|bayaran|dibayar|cair/.test(lowerText);
@@ -147,6 +139,10 @@
 		if (!preview) return;
 
 		entry = preview.source;
+		preview = null;
+	}
+
+	function cancelPreview() {
 		preview = null;
 	}
 
@@ -236,42 +232,7 @@
 				</section>
 
 				{#if preview}
-					<section class="rounded-md border border-border bg-card p-4 sm:p-5">
-						<div class="mb-4 flex items-center gap-2">
-							<BadgeCheckIcon class="size-4 text-chart-1" />
-							<h2 class="text-base font-medium">Tinjau hasil</h2>
-						</div>
-
-						<dl class="divide-y divide-border rounded-md border border-border">
-							<div class="grid gap-1 p-3 sm:grid-cols-[120px_1fr] sm:gap-4">
-								<dt class="text-sm text-muted-foreground">Jenis</dt>
-								<dd class="font-medium">{preview.kind}</dd>
-							</div>
-							<div class="grid gap-1 p-3 sm:grid-cols-[120px_1fr] sm:gap-4">
-								<dt class="text-sm text-muted-foreground">Nominal</dt>
-								<dd class="font-medium">{preview.amount}</dd>
-							</div>
-							<div class="grid gap-1 p-3 sm:grid-cols-[120px_1fr] sm:gap-4">
-								<dt class="text-sm text-muted-foreground">Kategori</dt>
-								<dd class="font-medium">{preview.category}</dd>
-							</div>
-							<div class="grid gap-1 p-3 sm:grid-cols-[120px_1fr] sm:gap-4">
-								<dt class="text-sm text-muted-foreground">Alarm</dt>
-								<dd class="font-medium">{preview.reminder} via {preview.destination}</dd>
-							</div>
-						</dl>
-
-						<div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-							<Button variant="outline" onclick={editPreview}>
-								<Edit3Icon class="size-4" />
-								Edit
-							</Button>
-							<Button onclick={savePreview}>
-								<CheckIcon class="size-4" />
-								Simpan
-							</Button>
-						</div>
-					</section>
+					<OmniboxResultPreview {preview} onCancel={cancelPreview} onEdit={editPreview} onSave={savePreview} />
 				{/if}
 			</div>
 
