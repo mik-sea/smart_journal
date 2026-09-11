@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from "svelte";
+	import { animate, createTimeline, onScroll, utils } from "animejs";
 	import BellRingIcon from "@lucide/svelte/icons/bell-ring";
 	import CheckIcon from "@lucide/svelte/icons/check";
 	import Globe2Icon from "@lucide/svelte/icons/globe-2";
@@ -21,6 +22,7 @@
 	let discordEnabled = $state(true);
 	let reminderLeadTime = $state("3 hari sebelum");
 	let saveMessage = $state("");
+	let motionCleanups: (() => void)[] = [];
 
 	const timezones = ["Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura", "UTC"];
 
@@ -42,14 +44,103 @@
 		}
 	}
 
-	function setThemePreference(value: ThemePreference) {
+	function animateTap(target: EventTarget | null) {
+		if (!(target instanceof HTMLElement) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+			return;
+		}
+
+		animate(target, {
+			scale: [0.97, 1],
+			duration: 240,
+			ease: "out(4)",
+		});
+	}
+
+	function cleanupMotion() {
+		motionCleanups.forEach((cleanup) => cleanup());
+		motionCleanups = [];
+	}
+
+	function setupSettingsScrollAnimations() {
+		const elements = utils.$("[data-settings-animate]") as HTMLElement[];
+		const icons = utils.$("[data-settings-icon]") as HTMLElement[];
+
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+			[...elements, ...icons].forEach((element) => {
+				element.style.opacity = "1";
+				element.style.transform = "none";
+			});
+			return;
+		}
+
+		elements.forEach((element, index) => {
+			const animation = animate(element, {
+				opacity: [0, 1],
+				y: [18, 0],
+				scale: [0.985, 1],
+				duration: 720,
+				delay: index * 35,
+				ease: "out(4)",
+				autoplay: onScroll({
+					target: element,
+					repeat: false,
+					debug: false,
+				}),
+			});
+
+			motionCleanups.push(() => animation.revert());
+		});
+
+		icons.forEach((icon) => {
+			const timeline = createTimeline({
+				autoplay: onScroll({
+					target: icon,
+					repeat: false,
+					debug: false,
+				}),
+			})
+				.add(icon, {
+					opacity: [0, 1],
+					scale: [0.82, 1.04],
+					rotate: [-4, 1],
+					duration: 420,
+					ease: "out(4)",
+				})
+				.add(icon, {
+					scale: 1,
+					rotate: 0,
+					duration: 180,
+					ease: "out(3)",
+				});
+
+			motionCleanups.push(() => timeline.revert());
+		});
+	}
+
+	function setThemePreference(value: ThemePreference, target: EventTarget | null = null) {
 		themePreference = value;
 		localStorage.setItem("smart-journal-theme", value);
 		window.dispatchEvent(new CustomEvent<ThemePreference>("smart-journal-theme-change", { detail: value }));
+		animateTap(target);
 	}
 
-	function saveSettings() {
+	function saveSettings(event?: MouseEvent) {
 		saveMessage = "Pengaturan disimpan.";
+		animateTap(event?.currentTarget ?? null);
+		window.requestAnimationFrame(() => {
+			const message = document.querySelector<HTMLElement>("[data-save-message]");
+
+			if (!message || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+				return;
+			}
+
+			animate(message, {
+				opacity: [0, 1],
+				y: [6, 0],
+				duration: 280,
+				ease: "out(3)",
+			});
+		});
 
 		window.setTimeout(() => {
 			saveMessage = "";
@@ -72,10 +163,12 @@
 		};
 
 		syncThemePreference();
+		setupSettingsScrollAnimations();
 		window.addEventListener("smart-journal-theme-change", handleThemeChange);
 		window.addEventListener("storage", handleStorage);
 
 		return () => {
+			cleanupMotion();
 			window.removeEventListener("smart-journal-theme-change", handleThemeChange);
 			window.removeEventListener("storage", handleStorage);
 		};
@@ -88,7 +181,10 @@
 
 <section class="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6 lg:px-8">
 	<div class="mx-auto flex w-full max-w-5xl flex-col gap-5">
-		<header class="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+		<header
+			data-settings-animate
+			class="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between"
+		>
 			<div>
 				<p class="text-sm text-muted-foreground">Akun dan integrasi</p>
 				<h1 class="mt-1 text-2xl font-semibold tracking-normal">Settings</h1>
@@ -96,7 +192,7 @@
 
 			<div class="flex flex-col-reverse items-start gap-2 sm:flex-row sm:items-center">
 				{#if saveMessage}
-					<div class="flex items-center gap-2 text-sm text-chart-1">
+					<div data-save-message class="flex items-center gap-2 text-sm text-chart-1">
 						<CheckIcon class="size-4" />
 						<span>{saveMessage}</span>
 					</div>
@@ -110,9 +206,9 @@
 
 		<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
 			<div class="space-y-5">
-				<section class="rounded-md border border-border bg-card p-4 sm:p-5">
+				<section data-settings-animate class="settings-card rounded-md border border-border bg-card p-4 sm:p-5">
 					<div class="mb-4 flex items-center gap-3">
-						<div class="flex size-9 items-center justify-center rounded-md border border-border bg-background">
+						<div data-settings-icon class="settings-icon flex size-9 items-center justify-center rounded-md border border-border bg-background">
 							<MailIcon class="size-4 text-muted-foreground" />
 						</div>
 						<div>
@@ -127,9 +223,9 @@
 					</label>
 				</section>
 
-				<section class="rounded-md border border-border bg-card p-4 sm:p-5">
+				<section data-settings-animate class="settings-card rounded-md border border-border bg-card p-4 sm:p-5">
 					<div class="mb-4 flex items-center gap-3">
-						<div class="flex size-9 items-center justify-center rounded-md border border-border bg-background">
+						<div data-settings-icon class="settings-icon flex size-9 items-center justify-center rounded-md border border-border bg-background">
 							<PlugZapIcon class="size-4 text-muted-foreground" />
 						</div>
 						<div>
@@ -159,9 +255,9 @@
 					</div>
 				</section>
 
-				<section class="rounded-md border border-border bg-card p-4 sm:p-5">
+				<section data-settings-animate class="settings-card rounded-md border border-border bg-card p-4 sm:p-5">
 					<div class="mb-4 flex items-center gap-3">
-						<div class="flex size-9 items-center justify-center rounded-md border border-border bg-background">
+						<div data-settings-icon class="settings-icon flex size-9 items-center justify-center rounded-md border border-border bg-background">
 							<Globe2Icon class="size-4 text-muted-foreground" />
 						</div>
 						<div>
@@ -192,9 +288,9 @@
 			</div>
 
 			<div class="space-y-5">
-				<section class="rounded-md border border-border bg-card p-4 sm:p-5">
+				<section data-settings-animate class="settings-card rounded-md border border-border bg-card p-4 sm:p-5">
 					<div class="mb-4 flex items-center gap-3">
-						<div class="flex size-9 items-center justify-center rounded-md border border-border bg-background">
+						<div data-settings-icon class="settings-icon flex size-9 items-center justify-center rounded-md border border-border bg-background">
 							<MoonIcon class="size-4 text-muted-foreground" />
 						</div>
 						<div>
@@ -209,7 +305,7 @@
 								variant={themePreference === option.value ? "secondary" : "ghost"}
 								size="sm"
 								aria-pressed={themePreference === option.value}
-								onclick={() => setThemePreference(option.value)}
+								onclick={(event) => setThemePreference(option.value, event.currentTarget)}
 							>
 								{option.label}
 							</Button>
@@ -217,9 +313,9 @@
 					</div>
 				</section>
 
-				<section class="rounded-md border border-border bg-card p-4 sm:p-5">
+				<section data-settings-animate class="settings-card rounded-md border border-border bg-card p-4 sm:p-5">
 					<div class="mb-4 flex items-center gap-3">
-						<div class="flex size-9 items-center justify-center rounded-md border border-border bg-background">
+						<div data-settings-icon class="settings-icon flex size-9 items-center justify-center rounded-md border border-border bg-background">
 							<BellRingIcon class="size-4 text-muted-foreground" />
 						</div>
 						<div>
@@ -234,9 +330,9 @@
 					</label>
 				</section>
 
-				<section class="rounded-md border border-border bg-card p-4 sm:p-5">
+				<section data-settings-animate class="settings-card rounded-md border border-border bg-card p-4 sm:p-5">
 					<div class="mb-4 flex items-center gap-3">
-						<div class="flex size-9 items-center justify-center rounded-md border border-border bg-background">
+						<div data-settings-icon class="settings-icon flex size-9 items-center justify-center rounded-md border border-border bg-background">
 							<ShieldCheckIcon class="size-4 text-muted-foreground" />
 						</div>
 						<div>
@@ -254,3 +350,41 @@
 		</div>
 	</div>
 </section>
+
+<style>
+	:global([data-settings-animate]),
+	:global([data-settings-icon]) {
+		will-change: opacity, transform;
+	}
+
+	.settings-card {
+		transition:
+			transform 180ms ease,
+			border-color 180ms ease,
+			box-shadow 180ms ease;
+	}
+
+	.settings-card:hover {
+		transform: translateY(-2px);
+		border-color: color-mix(in oklch, var(--foreground) 18%, var(--border));
+		box-shadow: 0 18px 42px -34px color-mix(in oklch, var(--foreground) 55%, transparent);
+	}
+
+	.settings-card:hover .settings-icon {
+		border-color: color-mix(in oklch, var(--foreground) 18%, var(--border));
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global([data-settings-animate]),
+		:global([data-settings-icon]),
+		.settings-card {
+			transition: none;
+			will-change: auto;
+		}
+
+		.settings-card:hover {
+			transform: none;
+		}
+	}
+</style>
+

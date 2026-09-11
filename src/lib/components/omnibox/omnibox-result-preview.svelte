@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from "svelte";
+	import { createLayout, stagger, utils } from "animejs";
 	import AlarmClockIcon from "@lucide/svelte/icons/alarm-clock";
 	import BadgeCheckIcon from "@lucide/svelte/icons/badge-check";
 	import CheckIcon from "@lucide/svelte/icons/check";
@@ -28,8 +30,48 @@
 
 	let { preview, onCancel, onEdit, onSave }: Props = $props();
 
+	let layoutContainer = $state<HTMLElement>();
+	let previewMode = $state<"detail" | "compact">("detail");
+	let layout: ReturnType<typeof createLayout> | null = null;
+
 	let hasReminder = $derived(preview.reminder !== "Tidak ada alarm");
 	let isFinance = $derived(preview.kind === "Pemasukan" || preview.kind.includes("Pengeluaran"));
+
+	function togglePreviewLayout() {
+		if (!layout) return;
+
+		layout.update(({ root }) => {
+			root.classList.toggle("preview-compact");
+			previewMode = root.classList.contains("preview-compact") ? "compact" : "detail";
+		});
+	}
+
+	onMount(() => {
+		if (!layoutContainer) return;
+
+		const [container] = utils.$(layoutContainer) as HTMLElement[];
+
+		layout = createLayout(container, {
+			children: ".preview-item",
+			duration: 520,
+			ease: "out(4)",
+			enterFrom: {
+				opacity: 0,
+				transform: "translateY(10px) scale(.96)",
+				delay: stagger(45),
+			},
+			leaveTo: {
+				opacity: 0,
+				transform: "scale(.92)",
+				delay: stagger(45),
+			},
+		});
+
+		return () => {
+			layout?.revert();
+			layout = null;
+		};
+	});
 </script>
 
 <section class="rounded-md border border-border bg-card p-4 sm:p-5" aria-live="polite">
@@ -49,7 +91,7 @@
 		</Button>
 	</div>
 
-	<div class="rounded-md border border-border bg-background p-3">
+	<div class="preview-item rounded-md border border-border bg-background p-3">
 		<div class="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
 			<FileTextIcon class="size-4" />
 			<span>Input asli</span>
@@ -57,8 +99,8 @@
 		<p class="text-sm leading-6 text-foreground">{preview.source}</p>
 	</div>
 
-	<div class="mt-3 grid gap-3 md:grid-cols-3">
-		<div class="rounded-md border border-border p-3">
+	<div bind:this={layoutContainer} class="layout-container mt-3 grid gap-3 md:grid-cols-3">
+		<div class="preview-item rounded-md border border-border p-3">
 			<div class="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
 				<WalletCardsIcon class="size-4" />
 				<span>Finance</span>
@@ -67,7 +109,7 @@
 			<p class="mt-1 text-sm text-muted-foreground">{isFinance ? preview.category : "Disimpan sebagai catatan"}</p>
 		</div>
 
-		<div class="rounded-md border border-border p-3">
+		<div class="preview-item preview-reminder rounded-md border border-border p-3">
 			<div class="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
 				<AlarmClockIcon class="size-4" />
 				<span>Reminder</span>
@@ -76,7 +118,7 @@
 			<p class="mt-1 text-sm text-muted-foreground">{hasReminder ? `Kirim via ${preview.destination}` : "Tanpa notifikasi"}</p>
 		</div>
 
-		<div class="rounded-md border border-border p-3">
+		<div class="preview-item rounded-md border border-border p-3">
 			<div class="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
 				<SendIcon class="size-4" />
 				<span>Tujuan</span>
@@ -86,14 +128,50 @@
 		</div>
 	</div>
 
-	<div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-		<Button variant="outline" onclick={onEdit}>
-			<Edit3Icon class="size-4" />
-			Edit input
+	<div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+		<Button variant="ghost" onclick={togglePreviewLayout}>
+			{previewMode === "detail" ? "Mode ringkas" : "Mode detail"}
 		</Button>
-		<Button onclick={onSave}>
-			<CheckIcon class="size-4" />
-			Simpan draft
-		</Button>
+
+		<div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+			<Button variant="outline" onclick={onEdit}>
+				<Edit3Icon class="size-4" />
+				Edit input
+			</Button>
+			<Button onclick={onSave}>
+				<CheckIcon class="size-4" />
+				Simpan draft
+			</Button>
+		</div>
 	</div>
 </section>
+
+<style>
+	.layout-container {
+		align-items: stretch;
+	}
+
+	.preview-item {
+		will-change: opacity, transform;
+	}
+
+	:global(.preview-compact) {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	:global(.preview-compact) .preview-reminder {
+		display: none;
+	}
+
+	@media (max-width: 767px) {
+		:global(.preview-compact) {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.preview-item {
+			will-change: auto;
+		}
+	}
+</style>
