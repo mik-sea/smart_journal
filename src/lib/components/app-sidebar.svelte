@@ -14,7 +14,7 @@
 		},
 		{
 			title: "Finance",
-			url: "#finance",
+			url: "/finance",
 			icon: WalletCardsIcon,
 		},
 		{
