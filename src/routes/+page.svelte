@@ -23,7 +23,10 @@
                 Send message
                 <ArrowUpIcon />
             </Button>
-            
+            <Button class="mt-5">
+                Send message
+                <ArrowUpIcon />
+            </Button>
         </div>
     </div>
 </div>
