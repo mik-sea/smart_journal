@@ -24,7 +24,7 @@
 		},
 		{
 			title: "Settings",
-			url: "/settings",
+			url: "#settings",
 			icon: SettingsIcon,
 		},
 	];
