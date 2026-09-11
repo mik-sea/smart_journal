@@ -14,17 +14,17 @@
 		},
 		{
 			title: "Finance",
-			url: "#finance",
+			url: "/finance",
 			icon: WalletCardsIcon,
 		},
 		{
 			title: "Reminders",
-			url: "#reminders",
+			url: "/reminders",
 			icon: AlarmClockIcon,
 		},
 		{
 			title: "Settings",
-			url: "#settings",
+			url: "/settings",
 			icon: SettingsIcon,
 		},
 	];
