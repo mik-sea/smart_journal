@@ -19,7 +19,7 @@
 		},
 		{
 			title: "Reminders",
-			url: "#reminders",
+			url: "/reminders",
 			icon: AlarmClockIcon,
 		},
 		{

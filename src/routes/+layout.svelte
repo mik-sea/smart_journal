@@ -31,7 +31,7 @@
 	const navItems = [
 		{ title: 'Home', url: '/', icon: HouseIcon },
 		{ title: 'Finance', url: '/finance', icon: WalletCardsIcon },
-		{ title: 'Reminders', url: '#reminders', icon: AlarmClockIcon },
+		{ title: 'Reminders', url: '/reminders', icon: AlarmClockIcon },
 		{ title: 'Settings', url: '#settings', icon: SettingsIcon },
 	];
 
